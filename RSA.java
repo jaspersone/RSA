@@ -36,7 +36,7 @@ public class RSA {
 		long d = 4; // Seeded d with a non-prime number to ensure loop runs once, it will be reset		
 		while(!isPrime(d)){
 			e = findE(e + 1, phi);
-			d = findModularMultiplicativeInverse(e, phi);
+			d = euclid(phi, e, n);
 		}
 		assert ((e > 1) && (phi % e != 0));
 		String result = n + " " + e + " " + d;
@@ -62,13 +62,56 @@ public class RSA {
 		return startE;
 	}
 	
-	private static long findModularMultiplicativeInverse(long e, long phi){
-		//long d = (long) ((1.0/e) % phi);
-		long d = 1;
-		while((d * e) % phi != 1){
-			d++;
+	/**
+	 * input: phi value and e value where e is a public key
+	 * output: d, where d is the private key
+	 */
+	private static long euclid(long phi, long e, long n){
+		assert(e > 1);
+		assert(isPrime(e));
+		assert(gcd(phi, e) == 1);
+		long d;
+		long[] top		= {1, 0, phi};
+		long[] bottom 	= {0, 1, e};
+		
+		while (bottom[2] != 1) {
+			long quotient = top[2] / bottom[2];
+			long[] newBottom = new long[3];
+			for(int i = 0; i < 3; i++) {
+				newBottom[i] = top[i] - quotient * bottom[i];
+			}
+			bottom = newBottom;
+			top = bottom;
+			if (bottom[2] < 1) {
+				System.out.println(">>>> Oh shit, bottom[2] below 1");
+			}
 		}
+		assert (bottom[2]) > 0;
+		assert (bottom[0] * phi + bottom[1] * e == 1);
+		
+		d = bottom[1];
+		if (d > n) {
+			while (d > n) {
+				d -= phi;
+			}
+		} else if (d < 0) {
+			while (d < 0) {
+				d += phi;
+			}
+		}
+		assert (1 <= d && d < n);
+		assert ((d * e) % phi == 1);
+		assert (gcd(d, phi) == 1); // assert d is coprime of phi
 		return d;
+	}
+	
+	/**
+	 * input: given two numbers left and right
+	 * output: returns the greatest common denominator
+	 */
+	private static long gcd(long left, long right) {
+		// TODO: write this
+		return 1;
 	}
 	
 	public static void encrypt(String inputFileName, String keyFile, String outputFileName){
