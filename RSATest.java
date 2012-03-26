@@ -87,7 +87,7 @@ public class RSATest {
 	}
 
 	@Test
-	public void testCombineTuple(){
+	public void testCombineTuple1() {
 		int[] tuple = {34, 76, 11};
 		int expectedResult = 2247691;
 		int testResult = RSA.combineTuple(tuple);
@@ -95,33 +95,148 @@ public class RSATest {
 	}
 	
 	@Test
-	public void testGetOutputMessage(){
-		long em = 2039212432;
-		int limit = 3;
-		// {01111001, 10001011, 11101001, 10010000}
+	public void testCombineTuple2() {
+		int[] tuple = {115, 32, 102};
+		int expectedResult = 7544934;
+		int testResult = RSA.combineTuple(tuple);
+		assertEquals(testResult, expectedResult);
+	}
+	
+	@Test
+	public void testGetOutputMessage1() {
+		long message = 10970;
+		long e = 1181;
+		long mod = 16777219;
+		// Input:  {101010, 1101, 1010}
+		// Output: {11100101, 00000101, 00011111}
 		byte[] expectedResult = 
-			{((Integer) 121).byteValue(), ((Integer) 139).byteValue(),
-			 ((Integer) 233).byteValue(), ((Integer) 144).byteValue()};
-		byte[] testResult = RSA.getOutputMessage(em, limit);
+			{((Integer) 229).byteValue(), ((Integer) 5).byteValue(), ((Integer) 31).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(message, e, mod);
+		System.out.println("Expected: " + Arrays.toString(expectedResult));
+		System.out.println("Actual  : " + Arrays.toString(testResult));
 		assertArrayEquals(testResult, expectedResult);
 	}
 	
 	@Test
-	public void testEncrypt() {
-		String testFile = "mytest1.enc";
-		String expectedFile = "test1.enc";
-		RSA.encrypt("test1.txt", "16777219 1181 184541", testFile);
-		assertTrue(compareFiles(testFile, expectedFile));
-	}
-
-	@Test
-	public void testDecrypt() {
-		String testFile = "mytest1.txt";
-		String expectedFile = "test1.txt";
-		RSA.decrypt("test1.enc", "16777219 1181 184541", testFile);
-		assertTrue(compareFiles(testFile, expectedFile));
+	public void testGetOutputMessage2() {
+		long message = 1635056;
+		long e = 1181;
+		long mod = 16777219;
+		// Input:  {1100011, 1100101, 1110000}
+		// Output: {10101100, 11001011, 11000100}
+		byte[] expectedResult = 
+			{((Integer) 172).byteValue(), ((Integer) 203).byteValue(), ((Integer) 196).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(message, e, mod);
+		System.out.println("Expected: " + Arrays.toString(expectedResult));
+		System.out.println("Actual  : " + Arrays.toString(testResult));
+		assertArrayEquals(testResult, expectedResult);
 	}
 	
+	@Test
+	public void testGetOutputMessage3() {
+		long message = 7544934;
+		long e = 1181;
+		long mod = 16777219;
+		// Input:  {01110011, 00100000, 01100110}
+		// Output: {10101100, 11001011, 11000100}
+		byte[] expectedResult = 
+			{((Integer) 110).byteValue(), ((Integer) 215).byteValue(), ((Integer) 20).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(message, e, mod);
+		System.out.println("Expected: " + Arrays.toString(expectedResult));
+		System.out.println("Actual  : " + Arrays.toString(testResult));
+		assertArrayEquals(testResult, expectedResult);
+	}
+	
+	@Test
+	public void testGetOutputMessage4() {
+		long message = 2100070;
+		long e = 1181;
+		long mod = 16777219;
+		// Input:  {00100000, 01101111, 01100110}
+		// Output: {01010001, 00111101, 10111100}
+		byte[] expectedResult = 
+			{((Integer) 81).byteValue(), ((Integer) 61).byteValue(), ((Integer) 188).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(message, e, mod);
+		System.out.println("Expected: " + Arrays.toString(expectedResult));
+		System.out.println("Actual  : " + Arrays.toString(testResult));
+		assertArrayEquals(testResult, expectedResult);
+	}
+	
+	@Test
+	public void testGetLengthOfBinaryNumber1() {
+		long testNum = 255;
+		int testLength = RSA.getLengthOfBinaryNumber(testNum);
+		int expectedLength = 8;
+		System.out.println("Expected: " + expectedLength + ", Actual: " + testLength);
+		assertEquals(testLength, expectedLength);
+	}
+	
+	@Test
+	public void testGetLengthOfBinaryNumber2() {
+		long testNum = 1;
+		int testLength = RSA.getLengthOfBinaryNumber(testNum);
+		int expectedLength = 1;
+		System.out.println("Expected: " + expectedLength + ", Actual: " + testLength);
+		assertEquals(testLength, expectedLength);
+	}
+	
+	@Test
+	public void testGetLengthOfBinaryNumber3() {
+		long testNum = 0;
+		int testLength = RSA.getLengthOfBinaryNumber(testNum);
+		int expectedLength = 1;
+		System.out.println("Expected: " + expectedLength + ", Actual: " + testLength);
+		assertEquals(testLength, expectedLength);
+	}
+	
+	@Test
+	public void testGetLengthOfBinaryNumber4() {
+		long testNum = 2;
+		int testLength = RSA.getLengthOfBinaryNumber(testNum);
+		int expectedLength = 2;
+		System.out.println("Expected: " + expectedLength + ", Actual: " + testLength);
+		assertEquals(testLength, expectedLength);
+	}
+	
+	@Test
+	public void testGetLengthOfBinaryNumber5() {
+		long testNum = 5;
+		int testLength = RSA.getLengthOfBinaryNumber(testNum);
+		int expectedLength = 3;
+		System.out.println("Expected: " + expectedLength + ", Actual: " + testLength);
+		assertEquals(testLength, expectedLength);
+	}
+	
+	@Test
+	public void testEncrypt_book() {
+		String key = "16777219 1181 184541";
+		String testInputFile = "test1.txt";
+		String testOutputFile = "mytest1.enc";
+		String expectedOutputFile = "test1.enc";
+		RSA.encrypt(testInputFile, key, testOutputFile);
+		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+	}
+	
+	@Test
+	public void testEncrypt_image() {
+		String key = "47734277 6917 44001893";
+		String testInputFile = "test7a.jpg";
+		String testOutputFile = "mytest7a.enc";
+		String expectedOutputFile = "test7a.enc";
+		RSA.encrypt(testInputFile, key, testOutputFile);
+		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+	}
+
+//	@Test
+//	public void testDecrypt_book() {
+//		String key = "47734277 6917 44001893";
+//		String testInputFile = "mytest1.enc";
+//		String testOutputFile = "mytest1.txt";
+//		String expectedOutputFile = "test1.txt";
+//		RSA.decrypt(testInputFile, key, testOutputFile);
+//		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+//	}
+
 	private boolean compareFiles(String testFileName, String expectedFileName) {
 		boolean allSame = true;
 		long bytesCompared = 0;
@@ -161,7 +276,6 @@ public class RSATest {
 			System.out.println("There was an unexpected error while trying to close the files.");
 			e.printStackTrace();
 		}
-		System.out.println("testEncrypt");
 		System.out.println("Total bytes compared: " + bytesCompared);
 		return allSame;
 	}

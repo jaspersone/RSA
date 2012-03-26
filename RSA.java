@@ -2,7 +2,7 @@ import java.io.*;
 import java.util.Arrays;
 
 public class RSA {
-	static boolean TESTING = false;
+	static boolean TESTING = true;
 	/**
 	 * @param args
 	 */
@@ -161,15 +161,17 @@ public class RSA {
 			FileInputStream f = new FileInputStream(inputFileName);
 			FileOutputStream outf = new FileOutputStream(outputFileName);
 			// Pull sets of LIMIT from f and encrypt them
-			int[] triple = new int[LIMIT];
+			int[] tuple = new int[LIMIT];
+			byte[] translatedTuple; // the tuple to write 
+			int message = 0;
 			while(!eofFound) {
 				for (int i = 0; i < LIMIT; i++) {
 					int temp = f.read();
 					if (temp != -1) {
-						triple[i] =  ((Integer) temp).byteValue();
-					} else {
-						while(i < LIMIT) {
-							triple[i] = 0;
+						tuple[i] =  temp; // loads LIMIT # of elements into tuple
+					} else { // if EOF is found
+						while(i < LIMIT) { // fill rest of tuple with zeros
+							tuple[i] = 0;
 							i++;
 						}
 						eofFound = true;
@@ -177,10 +179,26 @@ public class RSA {
 						break;
 					}
 				}
-				if (TESTING) {
-					System.out.println("Sending to write: " + Arrays.toString(triple));
+				// combineTuple should return the message to be encoded
+				System.out.println("Original input: " + Arrays.toString(tuple));
+				message = combineTuple(tuple);
+				translatedTuple = getOutputMessage(message, e, n);
+				if (translatedTuple.length < LIMIT) {
+					byte[] temp = new byte[LIMIT];
+					int tempIndex = LIMIT - 1;
+					for (int i = translatedTuple.length - 1; i >= 0; i--) {
+						temp[tempIndex] = translatedTuple[i];
+						tempIndex--;
+						assert(tempIndex >= 0);
+					}
+					translatedTuple = temp;
 				}
-				writeCurrentTuple(LIMIT, e, n, triple, outf);
+				if (TESTING) {
+					System.out.println("Sending to write: " + Arrays.toString(translatedTuple));
+				}
+				assert (translatedTuple.length <= LIMIT + 1);
+				assert(translatedTuple.length >= LIMIT);
+				writeByteTuple(translatedTuple, outf);
 			}
 			if (eofFound) {
 				if (TESTING) {
@@ -204,94 +222,60 @@ public class RSA {
 		}
 	}
 	
+	/**
+	 * Combine Tuple takes in an array of ints of arbitrary length
+	 * @param currTuple: the array of ints
+	 * @return returns the array of all the values of the ints inside the array concatenated together
+	 * 	such that their binary representation is concatenated. The result is a new int taking on the 
+	 *  value of the concatenation. Each int holds 8 places, so if it is less, it will prepend 0's.
+	 *  Ex: currTuple => 			{1,2,3}
+	 *  	bit representaiton => 	{1, 10, 101}
+	 *  	concatenated =>			{000000010000001000000101}
+	 *  	return int value =>		66053 (which is 10000001000000101 base 2 converted to base 10)
+	 */
 	protected static int combineTuple(int[] currTuple) {
-		int limit = currTuple.length;
 		int result = 0;
-		int temp;
-		for (int i = 0; i < limit; i++) {
-			temp = ((Integer) currTuple[i]).byteValue();
-			result = result << 8;
-			result += temp;
+		for (int val : currTuple) {
+			result = (result << 8) + val;
 		}
 		return result;
 	}
 
-	protected static byte[] getOutputMessage(long em, int limit){
-		byte[] result = new byte[limit + 1];
-		long mask = 255;
-		int temp;
-		for(int i = limit; i >= 0; i--){
-			temp = (int) (em & mask);
-			result[i] = ((Integer) temp).byteValue();
-			em = em >>> 8;
-		}
-		return result;
-	}
-	
 	/**
-	 * Encode/Decode takes in a message and applies fast exponentiation to it then outputs an array
+	 * Get Output Message takes in a message and applies fast exponentiation to it then outputs an array
 	 * of bytes which should then be written to file.
 	 * @param message: raw message that needs to be translated
 	 * @param exponent: the private or public key
 	 * @param mod: the n value
-	 * @param outputLimit: the limit to the size of the array to be returned
 	 * @return a byte array containing the output limit number of bytes to be written to file
 	 */
-	protected static byte[] encodeDecode(long message, long exponent, long mod, int outputLimit) {
+	protected static byte[] getOutputMessage(long message, long exponent, long mod) {
+		int CHUNK_SIZE = 8;
 		long translatedMessage = fastExponentiation(message, exponent, mod);
-		return getOutputMessage(translatedMessage, outputLimit);
+		int length = getLengthOfBinaryNumber(translatedMessage);
+		int outputLimit = length / CHUNK_SIZE;
+		if (length % CHUNK_SIZE >0) {
+			outputLimit++;
+		}
+		byte[] result = new byte[outputLimit];
+		long mask = 255; // only want to get the right most 8 elements
+		int temp;
+		for(int i = outputLimit - 1; i >= 0; i--) {
+			temp = (int) (translatedMessage & mask);
+			result[i] = ((Integer) temp).byteValue();
+			translatedMessage = translatedMessage >>> 8;
+		}
+		return result;		
 	}
 	
 	/**
-	 * Write Current Tuple to File
-	 * @param limit: # of bytes to write at one time
-	 * @param ned: n = limit, e = public key, d = private key
-	 * @param currTriple: set of numbers to pack and encode
-	 * @param f: output file object
-	 * @return true if end of file is found, false otherwise
+	 * Given a long num, will return the number of digits in its binary representation
+	 * @param num: a number in decimal form
+	 * @return an int giving the number of binary digits needed to represent num
 	 */
-	protected static void writeCurrentTuple(int limit, long exponent, long mod, int[] currTuple, FileOutputStream f) {
-		assert(f != null);
-		long n = mod;
-		long e = exponent;
-		// combine the currTuples into a single term using bit shifting
-		int word = combineTuple(currTuple);
-		if (TESTING) {
-			System.out.println("Word to encrypt:  " + Integer.toBinaryString(word));
-		}
-		assert(word < n); // insure this message is encode safe
-		// encrypt message
-		long encryptedMessage = fastExponentiation(word, e, n);
-		String em = Long.toBinaryString(encryptedMessage);
-		int length = em.length();
-		assert(length <= 32); // make sure the number did not overflow our container
-		
-		// get output message ready for writing
-		byte[] output = getOutputMessage(encryptedMessage, limit);
-
-		// break encrypted message into 4 bytes, then write to f
-		// with the exception when all are zeros
-		boolean allZeros = true;
-		for (byte b : output) {
-			if (b != ((Integer) 0).byteValue()) {
-				allZeros = false;
-				break;
-			}
-		}
-		if (!allZeros) {
-			if (TESTING) {
-				System.out.println("Encrypted Message:" + em);				
-			}
-			for (byte b : output) {
-				try {
-					f.write(b);
-				} catch (IOException badf) {
-					// TODO Auto-generated catch block
-					System.out.println("Problems writing to file");
-					badf.printStackTrace();
-				}
-			}
-		}
+	protected static int getLengthOfBinaryNumber(long num) {
+		String s = Long.toBinaryString(num);
+		return s.length();
 	}
 	
 	protected static void writeByteTuple(byte[] currentTuple, FileOutputStream f) {
@@ -304,7 +288,7 @@ public class RSA {
 		}
 		if (!allZeros) {
 			if (TESTING) {
-				System.out.println("Write Message:" + Arrays.toString(currentTuple));				
+				System.out.println("Write Message:" + Arrays.toString(currentTuple) + "\n");				
 			}
 			for (byte b : currentTuple) {
 				try {
@@ -327,28 +311,37 @@ public class RSA {
 		
 		// Get file set up
 		try {
-			FileInputStream f = new FileInputStream(inputFileName);
+			FileInputStream finput = new FileInputStream(inputFileName);
+			DataInputStream f = new DataInputStream(finput);
 			FileOutputStream outf = new FileOutputStream(outputFileName);
 			// Pull sets of LIMIT from f and decrypt them
 			int[] tuple = new int[LIMIT];
 			int message;
+			int temp = 0;
 			byte[] bytesToWrite;
 			while(!eofFound) {
 				for (int i = 0; i < LIMIT; i++) {
-					int temp = f.read();
-					tuple[i] = temp;
+					temp = f.readInt();
 					if (temp == -1) {
 						eofFound = true;
+						while(i < LIMIT) {
+							tuple[i] = 0;
+							i++;
+						}
+					} else {
+						tuple[i] = temp;
 					}
 				}
 				// combine the LIMIT number of bytes into a single message
 				message = combineTuple(tuple);
 				// decode the message
-				bytesToWrite = encodeDecode(message, d, n, LIMIT);
+				bytesToWrite = getOutputMessage(message, d, n);
 				// write bytes in tuple to file
-				writeByteTuple(bytesToWrite, outf);
-				if (TESTING) {
-					System.out.println("Sending to write: " + Arrays.toString(bytesToWrite));
+				if (!eofFound) {
+					writeByteTuple(bytesToWrite, outf);
+					if (TESTING) {
+						System.out.println("Sending to write: " + Arrays.toString(bytesToWrite));
+					}
 				}
 			}
 			if (eofFound) {
