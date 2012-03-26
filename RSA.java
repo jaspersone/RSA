@@ -2,7 +2,7 @@ import java.io.*;
 import java.util.Arrays;
 
 public class RSA {
-
+	static boolean TESTING = false;
 	/**
 	 * @param args
 	 */
@@ -82,7 +82,7 @@ public class RSA {
 			}
 			top = bottom;
 			bottom = newBottom;
-			if (bottom[2] < 1) {
+			if (bottom[2] < 1 && TESTING) {
 				System.out.println(">>>> Oh shit, bottom[2] below 1, value = " + bottom[2]);
 			}
 		}
@@ -151,34 +151,48 @@ public class RSA {
 
 	public static void encrypt(String inputFileName, String keyFile, String outputFileName) {
 		// acquire n, e, d values
+		int LIMIT = 3; // # of bytes to encode at one time.
 		long[] ned = getNEDValues(keyFile);
+		long n = ned[0];
+		long e = ned[1];
 		boolean eofFound = false;
 		// Get file set up
 		try {
 			FileInputStream f = new FileInputStream(inputFileName);
 			FileOutputStream outf = new FileOutputStream(outputFileName);
-			// Pull sets of 3 from f and encrypt them
-			int[] triple = new int[3];
+			// Pull sets of LIMIT from f and encrypt them
+			int[] triple = new int[LIMIT];
 			while(!eofFound) {
-				for (int i = 0; i < 3; i++) {
+				for (int i = 0; i < LIMIT; i++) {
 					int temp = f.read();
 					if (temp != -1) {
 						triple[i] =  ((Integer) temp).byteValue();
 					} else {
-						while(i < 3) {
-							triple[i] = -1;
+						while(i < LIMIT) {
+							triple[i] = 0;
 							i++;
 						}
-						f.close();					
+						eofFound = true;
+						f.close();
+						break;
 					}
 				}
-				System.out.println("Sending to write: " + Arrays.toString(triple));
-				eofFound = writeCurrentTuple(3, ned, triple, outf);
+				if (TESTING) {
+					System.out.println("Sending to write: " + Arrays.toString(triple));
+				}
+				writeCurrentTuple(LIMIT, e, n, triple, outf);
 			}
 			if (eofFound) {
-				System.out.println("Found EOF.");
+				if (TESTING) {
+					System.out.println("Found EOF.");
+				}
+				outf.close();
+			} else {
+				if (TESTING) {
+					System.out.println("You have problems if you made it into this section without closing the file.");
+				}
+				assert(false);
 			}
-			f.close();
 		} catch (FileNotFoundException ex) {
 			// TODO Auto-generated catch block
 			System.out.println("There was an error opening the file " + inputFileName);
@@ -189,7 +203,45 @@ public class RSA {
 			r.printStackTrace();
 		}
 	}
+	
+	protected static int combineTuple(int[] currTuple) {
+		int limit = currTuple.length;
+		int result = 0;
+		int temp;
+		for (int i = 0; i < limit; i++) {
+			temp = ((Integer) currTuple[i]).byteValue();
+			result = result << 8;
+			result += temp;
+		}
+		return result;
+	}
 
+	protected static byte[] getOutputMessage(long em, int limit){
+		byte[] result = new byte[limit + 1];
+		long mask = 255;
+		int temp;
+		for(int i = limit; i >= 0; i--){
+			temp = (int) (em & mask);
+			result[i] = ((Integer) temp).byteValue();
+			em = em >>> 8;
+		}
+		return result;
+	}
+	
+	/**
+	 * Encode/Decode takes in a message and applies fast exponentiation to it then outputs an array
+	 * of bytes which should then be written to file.
+	 * @param message: raw message that needs to be translated
+	 * @param exponent: the private or public key
+	 * @param mod: the n value
+	 * @param outputLimit: the limit to the size of the array to be returned
+	 * @return a byte array containing the output limit number of bytes to be written to file
+	 */
+	protected static byte[] encodeDecode(long message, long exponent, long mod, int outputLimit) {
+		long translatedMessage = fastExponentiation(message, exponent, mod);
+		return getOutputMessage(translatedMessage, outputLimit);
+	}
+	
 	/**
 	 * Write Current Tuple to File
 	 * @param limit: # of bytes to write at one time
@@ -198,66 +250,126 @@ public class RSA {
 	 * @param f: output file object
 	 * @return true if end of file is found, false otherwise
 	 */
-	protected static boolean writeCurrentTuple(int limit, long[] ned, int[] currTriple, FileOutputStream f) {
-		assert(ned.length == limit);
-		assert(currTriple.length == limit);
+	protected static void writeCurrentTuple(int limit, long exponent, long mod, int[] currTuple, FileOutputStream f) {
 		assert(f != null);
-		boolean eofFound = false;
-		long n = ned[0];
-		long e = ned[1];
-		long d = ned[2];
-		int word = 0;
-		for (int i = 0; i < limit; i++) {
-			int temp = ((Integer) currTriple[i]).byteValue();
-			if (currTriple[i] == -1) {
-				System.out.println("Inside write, found EOF");
-				eofFound = true;
-				break;
-			} else if (i == limit - 1) {
-				word += temp;
-			} else {
-				word += temp << ((limit - (i + 1)) * 8);
-			}
+		long n = mod;
+		long e = exponent;
+		// combine the currTuples into a single term using bit shifting
+		int word = combineTuple(currTuple);
+		if (TESTING) {
+			System.out.println("Word to encrypt:  " + Integer.toBinaryString(word));
 		}
-		System.out.println("Word to encrypt:  " + Integer.toBinaryString(word));
-		assert(word < ((Long) n).byteValue()); // insure this message is encode safe
+		assert(word < n); // insure this message is encode safe
 		// encrypt message
 		long encryptedMessage = fastExponentiation(word, e, n);
 		String em = Long.toBinaryString(encryptedMessage);
-		System.out.println("Encrypted Message:" + em);
 		int length = em.length();
 		assert(length <= 32); // make sure the number did not overflow our container
-		byte[] output = new byte[4];
-		// grab first chunk
-		int offset = 8 - (32 - length);
-		assert(offset >= 0);
-		if (offset == 0) {
-			output[0] = 0;
-		} else {
-			output[0] = ((Integer) Integer.parseInt(em.substring(0, offset))).byteValue();
-		}
-		// grab rest of chunks
-		for (int i = 1; i < limit; i++) {
-			output[i] = ((Integer) Integer.parseInt(em.substring(offset, offset + 8))).byteValue();
-			offset += 8;
-		}
+		
+		// get output message ready for writing
+		byte[] output = getOutputMessage(encryptedMessage, limit);
+
 		// break encrypted message into 4 bytes, then write to f
+		// with the exception when all are zeros
+		boolean allZeros = true;
 		for (byte b : output) {
-			try {
-				if (b != 0) {
-					f.write(b);
-				}
-			} catch (IOException badf) {
-				// TODO Auto-generated catch block
-				System.out.println("Problems writing to file");
-				badf.printStackTrace();
+			if (b != ((Integer) 0).byteValue()) {
+				allZeros = false;
+				break;
 			}
 		}
-		return eofFound;
+		if (!allZeros) {
+			if (TESTING) {
+				System.out.println("Encrypted Message:" + em);				
+			}
+			for (byte b : output) {
+				try {
+					f.write(b);
+				} catch (IOException badf) {
+					// TODO Auto-generated catch block
+					System.out.println("Problems writing to file");
+					badf.printStackTrace();
+				}
+			}
+		}
+	}
+	
+	protected static void writeByteTuple(byte[] currentTuple, FileOutputStream f) {
+		boolean allZeros = true;
+		for (byte b : currentTuple) {
+			if (b != ((Integer) 0).byteValue()) {
+				allZeros = false;
+				break;
+			}
+		}
+		if (!allZeros) {
+			if (TESTING) {
+				System.out.println("Write Message:" + Arrays.toString(currentTuple));				
+			}
+			for (byte b : currentTuple) {
+				try {
+					f.write(b);
+				} catch (IOException badf) {
+					// TODO Auto-generated catch block
+					System.out.println("Problems writing to file");
+					badf.printStackTrace();
+				}
+			}
+		}
 	}
 
 	public static void decrypt(String inputFileName, String keyFile, String outputFileName){
-
+		int LIMIT = 4; // # of bytes to decode at one time.
+		long[] ned = getNEDValues(keyFile);
+		boolean eofFound = false;
+		long n = ned[0];
+		long d = ned[2];
+		
+		// Get file set up
+		try {
+			FileInputStream f = new FileInputStream(inputFileName);
+			FileOutputStream outf = new FileOutputStream(outputFileName);
+			// Pull sets of LIMIT from f and decrypt them
+			int[] tuple = new int[LIMIT];
+			int message;
+			byte[] bytesToWrite;
+			while(!eofFound) {
+				for (int i = 0; i < LIMIT; i++) {
+					int temp = f.read();
+					tuple[i] = temp;
+					if (temp == -1) {
+						eofFound = true;
+					}
+				}
+				// combine the LIMIT number of bytes into a single message
+				message = combineTuple(tuple);
+				// decode the message
+				bytesToWrite = encodeDecode(message, d, n, LIMIT);
+				// write bytes in tuple to file
+				writeByteTuple(bytesToWrite, outf);
+				if (TESTING) {
+					System.out.println("Sending to write: " + Arrays.toString(bytesToWrite));
+				}
+			}
+			if (eofFound) {
+				if (TESTING) {
+					System.out.println("Found EOF.");
+				}
+				outf.close();
+			} else {
+				if (TESTING) {
+					System.out.println("You have problems if you made it into this section without closing the file.");
+				}
+				assert(false);
+			}
+		} catch (FileNotFoundException ex) {
+			// TODO Auto-generated catch block
+			System.out.println("There was an error opening the file " + inputFileName);
+			ex.printStackTrace();
+		} catch (IOException r) {
+			// TODO Auto-generated catch block
+			System.out.println("IO Exception occurred while accessing f.");
+			r.printStackTrace();
+		}
 	}
-
 }

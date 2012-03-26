@@ -1,4 +1,9 @@
 import static org.junit.Assert.*;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.util.Arrays;
+
 import org.junit.Test;
 
 
@@ -86,14 +91,46 @@ public class RSATest {
 	}
 
 	@Test
+	public void testCombineTuple(){
+		int[] tuple = {34, 76, 11};
+		int expectedResult = 2247691;
+		int testResult = RSA.combineTuple(tuple);
+		assertEquals(testResult, expectedResult);
+	}
+	
+	@Test
+	public void testGetOutputMessage(){
+		long em = 2039212432;
+		int limit = 3;
+		// {01111001, 10001011, 11101001, 10010000}
+		byte[] expectedResult = 
+			{((Integer) 121).byteValue(), ((Integer) 139).byteValue(),
+			 ((Integer) 233).byteValue(), ((Integer) 144).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(em, limit);
+		System.out.println("Expected Result: " + Arrays.toString(expectedResult));
+		System.out.println("\nActual Result:" + Arrays.toString(testResult));
+		assertArrayEquals(testResult, expectedResult);
+	}
+	
+	@Test
 	public void testEncrypt() {
-		RSA.encrypt("test1.txt", "16777219 1181 184541", "mytest1.enc");
-		assertEquals(1, 1);
+		boolean allSame = true;
+		String testFile = "mytest1.enc";
+		String expectedFile = "test1.enc";
+		RSA.encrypt("test1.txt", "16777219 1181 184541", testFile);
+		try {
+			FileInputStream testF = new FileInputStream(testFile);
+			assertEquals(1, 1);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	@Test
 	public void testDecrypt() {
-		fail("Not yet implemented");
+		RSA.encrypt("test1.enc", "16777219 1181 184541", "mytest1.txt");
 	}
 
 }
