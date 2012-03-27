@@ -6,7 +6,8 @@ public class RSA {
 	static boolean TESTING = false;
 	/**
 	 * @param args
-	 * @throws IOException 
+	 * @throws IOException
+	 * Written by Newman 
 	 */
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
@@ -30,6 +31,10 @@ public class RSA {
 		}
 	}
 
+	/** 
+	 * Written by Jasper
+	 */
+	
 	public static String generateKey(long p, long q){
 		assert(p > 0 && q > 0);
 		assert(isPrime(p) && isPrime(q));
@@ -46,6 +51,13 @@ public class RSA {
 		return result;
 	}
 
+	/**
+	 * Takes in value x and determines if it is a prime number
+	 * @param x: value to evaluate for prime
+	 * @return true if prime, false otherwise
+	 * Written by Newman
+	 */
+	
 	private static boolean isPrime(long x){
 		int i = 2;
 		while((i * i) - 1 < x){
@@ -57,6 +69,13 @@ public class RSA {
 		return true;
 	}
 
+	/**
+	 * @param startE
+	 * @param phi
+	 * @return
+	 * Written by Jasper
+	 */
+	
 	private static long findE(long startE, long phi){
 		while(phi % startE == 0){
 			startE++;		
@@ -67,6 +86,7 @@ public class RSA {
 	/**
 	 * input: phi value and e value where e is a public key
 	 * output: d, where d is the private key
+	 * Written by Newman
 	 */
 	protected static long euclid(long phi, long e, long n){
 		assert(e > 1);
@@ -110,6 +130,7 @@ public class RSA {
 	/**
 	 * input: given two numbers left and right
 	 * output: returns the greatest common denominator
+	 * Written by Jasper
 	 */
 	protected static long gcd(long left, long right) {
 		// TODO: write this
@@ -128,6 +149,7 @@ public class RSA {
 	 * @param exponent
 	 * @param modVal
 	 * @return returns (base^exponent) % modVal
+	 * Written by Newman
 	 */
 	protected static long fastExponentiation(long base, long exponent, long modVal) {
 		String binary = Long.toBinaryString(exponent);
@@ -141,6 +163,12 @@ public class RSA {
 		return c;
 	}
 
+	/**
+	 * 
+	 * @param keyFile
+	 * @return
+	 * Written by Jasper
+	 */
 	protected static long[] getNEDValues(String keyFile) {
 		String s = keyFile;
 		long[] result = new long[3];
@@ -162,6 +190,13 @@ public class RSA {
 		return result;
 	}
 
+	/**
+	 * 
+	 * @param inputFileName
+	 * @param keyFile
+	 * @param outputFileName
+	 * Written by Newman
+	 */
 	public static void encrypt(String inputFileName, String keyFile, String outputFileName) {
 		// acquire n, e, d values
 		int LIMIT = 3; // # of bytes to encode at one time.
@@ -260,6 +295,7 @@ public class RSA {
 	 *  	bit representaiton => 	{1, 10, 101}
 	 *  	concatenated =>			{000000010000001000000101}
 	 *  	return int value =>		66053 (which is 10000001000000101 base 2 converted to base 10)
+	 *  Written by Jasper
 	 */
 	protected static int combineTuple(int[] currTuple) {
 		int result = 0;
@@ -276,6 +312,7 @@ public class RSA {
 	 * @param exponent: the private or public key
 	 * @param mod: the n value
 	 * @return a byte array containing the output limit number of bytes to be written to file
+	 * Written by Newman
 	 */
 	protected static byte[] getOutputMessage(long message, long exponent, long mod, int size) {
 		int CHUNK_SIZE = 8;
@@ -299,12 +336,19 @@ public class RSA {
 	 * Given a long num, will return the number of digits in its binary representation
 	 * @param num: a number in decimal form
 	 * @return an int giving the number of binary digits needed to represent num
+	 * Written by Jasper
 	 */
 	protected static int getLengthOfBinaryNumber(long num) {
 		String s = Long.toBinaryString(num);
 		return s.length();
 	}
 	
+	/**
+	 * 
+	 * @param currentTuple
+	 * @param f
+	 * Written by Newman
+	 */
 	protected static void writeByteTuple(byte[] currentTuple, FileOutputStream f) {
 		boolean allZeros = true;
 		for (byte b : currentTuple) {
@@ -329,6 +373,13 @@ public class RSA {
 		}
 	}
 
+	/**
+	 * 
+	 * @param inputFileName
+	 * @param keyFile
+	 * @param outputFileName
+	 * Written by Jasper
+	 */
 	public static void decrypt(String inputFileName, String keyFile, String outputFileName){
 		int LIMIT = 4; // # of bytes to decode at one time.
 		long[] ned = getNEDValues(keyFile);
