@@ -1,12 +1,14 @@
 import java.io.*;
 import java.util.Arrays;
+import java.util.Scanner;
 
 public class RSA {
-	static boolean TESTING = true;
+	static boolean TESTING = false;
 	/**
 	 * @param args
+	 * @throws IOException 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
 		String command = args[0];
 		if (command.equals("key")) {
@@ -140,11 +142,22 @@ public class RSA {
 	}
 
 	protected static long[] getNEDValues(String keyFile) {
-		String[] temp = keyFile.split("\\s+"); // delimits on whitespace or groups of whitespace
-		assert(temp.length == 3); // make sure the given keyFile is of proper length
-		long[] result = new long[temp.length];
-		for (int i = 0; i < temp.length; i++) {
-			result[i] = Long.valueOf(temp[i]);
+		String s = keyFile;
+		long[] result = new long[3];
+		try {
+			Scanner sc = new Scanner(new File(keyFile));
+			for (int i = 0; i < result.length; i++) {
+				result[i] = sc.nextInt();
+			}
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			if (TESTING) {
+				System.out.println("File not found, will use raw string.");
+			}
+			String[] temp = keyFile.split("\\s+"); // delimits on whitespace or groups of whitespace
+			for (int i = 0; i < temp.length; i++) {
+				result[i] = Long.valueOf(temp[i]);
+			}
 		}
 		return result;
 	}
@@ -158,31 +171,40 @@ public class RSA {
 		boolean eofFound = false;
 		// Get file set up
 		try {
-			FileInputStream f = new FileInputStream(inputFileName);
+			FileInputStream finput = new FileInputStream(inputFileName);
+			DataInputStream f = new DataInputStream(finput); 
 			FileOutputStream outf = new FileOutputStream(outputFileName);
 			// Pull sets of LIMIT from f and encrypt them
 			int[] tuple = new int[LIMIT];
 			byte[] translatedTuple; // the tuple to write 
 			int message = 0;
+			int t = 0;
 			while(!eofFound) {
 				for (int i = 0; i < LIMIT; i++) {
-					int temp = f.read();
-					if (temp != -1) {
-						tuple[i] =  temp; // loads LIMIT # of elements into tuple
+					try {
+						t = f.readUnsignedByte();
+					} catch (EOFException fu) {
+						eofFound = true;
+					}
+					if (!eofFound) {
+						tuple[i] =  t; // loads LIMIT # of elements into tuple
 					} else { // if EOF is found
 						while(i < LIMIT) { // fill rest of tuple with zeros
 							tuple[i] = 0;
 							i++;
 						}
-						eofFound = true;
 						f.close();
+						finput.close();
 						break;
 					}
 				}
 				// combineTuple should return the message to be encoded
-				System.out.println("Original input: " + Arrays.toString(tuple));
 				message = combineTuple(tuple);
-				translatedTuple = getOutputMessage(message, e, n);
+				if (TESTING) {
+					System.out.println("Original input:     " + Arrays.toString(tuple));
+					System.out.println("Message:            " + Integer.toBinaryString(message));
+				}
+				translatedTuple = getOutputMessage(message, e, n, LIMIT + 1);
 				if (translatedTuple.length < LIMIT) {
 					byte[] temp = new byte[LIMIT];
 					int tempIndex = LIMIT - 1;
@@ -194,6 +216,12 @@ public class RSA {
 					translatedTuple = temp;
 				}
 				if (TESTING) {
+					int[] temp = new int[translatedTuple.length];
+					for (int i = 0; i < translatedTuple.length; i++) {
+						temp[i] = (int) translatedTuple[i];
+					}
+					int tmessage = combineTuple(temp);
+					System.out.println("Translated Message: " + Integer.toBinaryString(tmessage));
 					System.out.println("Sending to write: " + Arrays.toString(translatedTuple));
 				}
 				assert (translatedTuple.length <= LIMIT + 1);
@@ -249,23 +277,22 @@ public class RSA {
 	 * @param mod: the n value
 	 * @return a byte array containing the output limit number of bytes to be written to file
 	 */
-	protected static byte[] getOutputMessage(long message, long exponent, long mod) {
+	protected static byte[] getOutputMessage(long message, long exponent, long mod, int size) {
 		int CHUNK_SIZE = 8;
 		long translatedMessage = fastExponentiation(message, exponent, mod);
-		int length = getLengthOfBinaryNumber(translatedMessage);
-		int outputLimit = length / CHUNK_SIZE;
-		if (length % CHUNK_SIZE >0) {
-			outputLimit++;
+		if (TESTING) {
+			System.out.println("Inside gOM Message: " + Long.toBinaryString(translatedMessage));
 		}
+		int outputLimit = size;
 		byte[] result = new byte[outputLimit];
 		long mask = 255; // only want to get the right most 8 elements
-		int temp;
+		byte temp;
 		for(int i = outputLimit - 1; i >= 0; i--) {
-			temp = (int) (translatedMessage & mask);
-			result[i] = ((Integer) temp).byteValue();
-			translatedMessage = translatedMessage >>> 8;
+			temp = (byte) (translatedMessage & mask);
+			result[i] = temp;
+			translatedMessage = translatedMessage >>> CHUNK_SIZE;
 		}
-		return result;		
+		return result;
 	}
 	
 	/**
@@ -321,13 +348,18 @@ public class RSA {
 			byte[] bytesToWrite;
 			while(!eofFound) {
 				for (int i = 0; i < LIMIT; i++) {
-					temp = f.readInt();
-					if (temp == -1) {
+					try {
+						temp = f.readUnsignedByte();
+					} catch (EOFException e) {
 						eofFound = true;
+					}
+					if (eofFound) {
 						while(i < LIMIT) {
 							tuple[i] = 0;
 							i++;
 						}
+						f.close();
+						finput.close();
 					} else {
 						tuple[i] = temp;
 					}
@@ -335,12 +367,20 @@ public class RSA {
 				// combine the LIMIT number of bytes into a single message
 				message = combineTuple(tuple);
 				// decode the message
-				bytesToWrite = getOutputMessage(message, d, n);
+				bytesToWrite = getOutputMessage(message, d, n, LIMIT - 1);
+				
 				// write bytes in tuple to file
 				if (!eofFound) {
-					writeByteTuple(bytesToWrite, outf);
+					outf.write(bytesToWrite);
+					//writeByteTuple(bytesToWrite, outf);
 					if (TESTING) {
-						System.out.println("Sending to write: " + Arrays.toString(bytesToWrite));
+						int[] t = new int[bytesToWrite.length];
+						for (int i = 0; i < bytesToWrite.length; i++) {
+							t[i] = (int) bytesToWrite[i];
+						}
+						int tmessage = combineTuple(t);
+						System.out.println("Translated Message: " + Integer.toBinaryString(tmessage));
+						System.out.println("Sending to write:   " + Arrays.toString(t));
 					}
 				}
 			}

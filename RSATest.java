@@ -47,6 +47,40 @@ public class RSATest {
 	}
 	
 	@Test
+	public void testFastExponentiation3() {
+		long base = 56;
+		long expo = 7;
+		long mod = 33;
+		long testResult = RSA.fastExponentiation(base, expo, mod);
+		long expectedResult = 23;
+		assertEquals(testResult, expectedResult);
+	} 
+	
+	@Test
+	public void testFastExponentiation4() {
+		long word = 23;
+		long n = 16777219;
+		long e = 1181;
+		long d = 184541;
+		long testResult = RSA.fastExponentiation(word, e, n);
+		testResult = RSA.fastExponentiation(testResult, d, n);
+		long expectedResult = 23;
+		assertEquals(testResult, expectedResult);
+	}
+	
+	@Test
+	public void testFastExponentiation5() {
+		long word = 16777215;
+		long n = 16777219;
+		long e = 1181;
+		long d = 184541;
+		long testResult = RSA.fastExponentiation(word, e, n);
+		testResult = RSA.fastExponentiation(testResult, d, n);
+		long expectedResult = 16777215;
+		assertEquals(testResult, expectedResult);
+	}
+	
+	@Test
 	public void testGCD1() {
 		long testResult = RSA.gcd(4389, 17347);
 		long expectedResult = 209;
@@ -101,6 +135,14 @@ public class RSATest {
 		int testResult = RSA.combineTuple(tuple);
 		assertEquals(testResult, expectedResult);
 	}
+
+	@Test
+	public void testCombineTuple3() {
+		int[] tuple = {20, 80, 1};
+		int expectedResult = 1331201;
+		int testResult = RSA.combineTuple(tuple);
+		assertEquals(testResult, expectedResult);
+	}
 	
 	@Test
 	public void testGetOutputMessage1() {
@@ -108,10 +150,10 @@ public class RSATest {
 		long e = 1181;
 		long mod = 16777219;
 		// Input:  {101010, 1101, 1010}
-		// Output: {11100101, 00000101, 00011111}
+		// Output: {00000000, 11100101, 00000101, 00011111}
 		byte[] expectedResult = 
-			{((Integer) 229).byteValue(), ((Integer) 5).byteValue(), ((Integer) 31).byteValue()};
-		byte[] testResult = RSA.getOutputMessage(message, e, mod);
+			{((Integer) 0).byteValue(), ((Integer) 229).byteValue(), ((Integer) 5).byteValue(), ((Integer) 31).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(message, e, mod, 4);
 		System.out.println("Expected: " + Arrays.toString(expectedResult));
 		System.out.println("Actual  : " + Arrays.toString(testResult));
 		assertArrayEquals(testResult, expectedResult);
@@ -123,10 +165,10 @@ public class RSATest {
 		long e = 1181;
 		long mod = 16777219;
 		// Input:  {1100011, 1100101, 1110000}
-		// Output: {10101100, 11001011, 11000100}
+		// Output: {00000000, 10101100, 11001011, 11000100}
 		byte[] expectedResult = 
-			{((Integer) 172).byteValue(), ((Integer) 203).byteValue(), ((Integer) 196).byteValue()};
-		byte[] testResult = RSA.getOutputMessage(message, e, mod);
+			{((Integer) 0).byteValue(), ((Integer) 172).byteValue(), ((Integer) 203).byteValue(), ((Integer) 196).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(message, e, mod, 4);
 		System.out.println("Expected: " + Arrays.toString(expectedResult));
 		System.out.println("Actual  : " + Arrays.toString(testResult));
 		assertArrayEquals(testResult, expectedResult);
@@ -138,10 +180,10 @@ public class RSATest {
 		long e = 1181;
 		long mod = 16777219;
 		// Input:  {01110011, 00100000, 01100110}
-		// Output: {10101100, 11001011, 11000100}
+		// Output: {00000000, 10101100, 11001011, 11000100}
 		byte[] expectedResult = 
-			{((Integer) 110).byteValue(), ((Integer) 215).byteValue(), ((Integer) 20).byteValue()};
-		byte[] testResult = RSA.getOutputMessage(message, e, mod);
+			{((Integer) 0).byteValue(), ((Integer) 110).byteValue(), ((Integer) 215).byteValue(), ((Integer) 20).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(message, e, mod, 4);
 		System.out.println("Expected: " + Arrays.toString(expectedResult));
 		System.out.println("Actual  : " + Arrays.toString(testResult));
 		assertArrayEquals(testResult, expectedResult);
@@ -153,10 +195,10 @@ public class RSATest {
 		long e = 1181;
 		long mod = 16777219;
 		// Input:  {00100000, 01101111, 01100110}
-		// Output: {01010001, 00111101, 10111100}
+		// Output: {00000000, 01010001, 00111101, 10111100}
 		byte[] expectedResult = 
-			{((Integer) 81).byteValue(), ((Integer) 61).byteValue(), ((Integer) 188).byteValue()};
-		byte[] testResult = RSA.getOutputMessage(message, e, mod);
+			{((Integer) 0).byteValue(), ((Integer) 81).byteValue(), ((Integer) 61).byteValue(), ((Integer) 188).byteValue()};
+		byte[] testResult = RSA.getOutputMessage(message, e, mod, 4);
 		System.out.println("Expected: " + Arrays.toString(expectedResult));
 		System.out.println("Actual  : " + Arrays.toString(testResult));
 		assertArrayEquals(testResult, expectedResult);
@@ -208,7 +250,7 @@ public class RSATest {
 	}
 	
 	@Test
-	public void testEncrypt_book() {
+	public void testEncrypt_book1() {
 		String key = "16777219 1181 184541";
 		String testInputFile = "test1.txt";
 		String testOutputFile = "mytest1.enc";
@@ -216,7 +258,57 @@ public class RSATest {
 		RSA.encrypt(testInputFile, key, testOutputFile);
 		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
 	}
+
+	@Test
+	public void testEncrypt_book2() {
+		String key = "16777219 1181 184541";
+		String testInputFile = "test2.txt";
+		String testOutputFile = "mytest2.enc";
+		String expectedOutputFile = "test2.enc";
+		RSA.encrypt(testInputFile, key, testOutputFile);
+		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+	}
 	
+	@Test
+	public void testEncrypt_book3() {
+		String key = "16777219 1181 184541";
+		String testInputFile = "test3.txt";
+		String testOutputFile = "mytest3.enc";
+		String expectedOutputFile = "test3.enc";
+		RSA.encrypt(testInputFile, key, testOutputFile);
+		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+	}
+
+	@Test
+	public void testDecrypt_book1() {
+		String key = "16777219 1181 184541";
+		String testInputFile = "mytest1.enc";
+		String testOutputFile = "mytest1.txt";
+		String expectedOutputFile = "test1.txt";
+		RSA.decrypt(testInputFile, key, testOutputFile);
+		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+	}
+	
+	@Test
+	public void testDecrypt_book2() {
+		String key = "16777219 1181 184541";
+		String testInputFile = "mytest2.enc";
+		String testOutputFile = "mytest2.txt";
+		String expectedOutputFile = "test2.txt";
+		RSA.decrypt(testInputFile, key, testOutputFile);
+		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+	}
+	
+	@Test
+	public void testDecrypt_book3() {
+		String key = "16777219 1181 184541";
+		String testInputFile = "mytest3.enc";
+		String testOutputFile = "mytest3.txt";
+		String expectedOutputFile = "test3.txt";
+		RSA.decrypt(testInputFile, key, testOutputFile);
+		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+	}
+
 	@Test
 	public void testEncrypt_image() {
 		String key = "47734277 6917 44001893";
@@ -226,16 +318,16 @@ public class RSATest {
 		RSA.encrypt(testInputFile, key, testOutputFile);
 		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
 	}
-
-//	@Test
-//	public void testDecrypt_book() {
-//		String key = "47734277 6917 44001893";
-//		String testInputFile = "mytest1.enc";
-//		String testOutputFile = "mytest1.txt";
-//		String expectedOutputFile = "test1.txt";
-//		RSA.decrypt(testInputFile, key, testOutputFile);
-//		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
-//	}
+	
+	@Test
+	public void testDecrypt_image() {
+		String key = "47734277 6917 44001893";
+		String testInputFile = "mytest7a.enc";
+		String testOutputFile = "mytest7a.jpg";
+		String expectedOutputFile = "test7a.jpg";
+		RSA.decrypt(testInputFile, key, testOutputFile);
+		assertTrue(compareFiles(testOutputFile, expectedOutputFile));
+	}
 
 	private boolean compareFiles(String testFileName, String expectedFileName) {
 		boolean allSame = true;
